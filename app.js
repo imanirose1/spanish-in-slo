@@ -13,7 +13,7 @@
   function signVisual(entry) {
     // Only allow local or HTTPS image paths; never inject arbitrary attributes or URLs.
     const path = String(entry.photo || '');
-    if (/^(assets\/|https:\/\/)/.test(path)) return `<img class="detail-image" src="${escape(path)}" alt="${escape(entry.photoAlt || entry.text)}" loading="lazy">`;
+    if (/^(assets\/|https:\/\/)/.test(path)) return `<a class="photo-link" href="${escape(path)}" target="_blank" rel="noopener" aria-label="Open full photograph: ${escape(entry.title)}"><img class="detail-image" src="${escape(path)}" alt="${escape(entry.photoAlt || entry.text)}" loading="lazy"></a>`;
     return `<div class="sample-sign ${entry.type === 'street' ? 'street' : ''}" lang="es"><span>${escape(entry.text)}</span><small>${entry.type === 'street' ? 'Route illustration' : 'Sign illustration · photo to be added'}</small></div>`;
   }
   function visibleEntries() {
@@ -46,11 +46,13 @@
         ? L.marker(entry.coordinates, { title: entry.title, alt: entry.title, icon: L.divIcon({ className: 'custom-marker', html: '<span class="pin-shape"></span>', iconSize: [28, 35], iconAnchor: [14, 32], popupAnchor: [0, -29] }) })
         : L.polyline(entry.coordinates, { color: '#777b50', weight: 8, opacity: 0.9, lineCap: 'round' });
       layer.bindPopup(popup(entry), { maxWidth: 300, minWidth: 220 });
-      if (entry.type === 'street') layer.bindTooltip(`${entry.title} · sample segment`, { sticky: true });
+      if (entry.type === 'street') layer.bindTooltip(`${entry.title} · ${entry.sample ? 'sample segment' : 'mapped named route'}`, { sticky: true });
       layer.on('click', () => { state.selected = entry.id; renderList(); showDetail(entry, false); });
       layers.set(entry.id, layer);
     });
     renderEntries();
+    const mapped = [...layers.values()];
+    if (mapped.length) map.fitBounds(L.featureGroup(mapped).getBounds(), { padding: [30, 30] });
   }
   function renderList() {
     const entries = visibleEntries();
@@ -61,7 +63,7 @@
       const card = document.createElement('button');
       card.type = 'button'; card.className = `entry-card ${entry.type === 'street' ? 'street-card' : ''}`;
       card.dataset.entry = entry.id; card.setAttribute('aria-pressed', String(state.selected === entry.id));
-      card.innerHTML = `<span class="entry-type">${escape(categories[entry.category])}</span><strong>${escape(entry.title)}</strong><small>${escape(entry.type === 'sign' ? entry.text : 'Highlighted demonstration segment')}</small><span class="card-meta"><span>${entry.sample ? 'Sample entry' : 'Field entry'}</span><span aria-hidden="true">↗</span></span>`;
+      card.innerHTML = `<span class="entry-type">${escape(categories[entry.category])}</span><strong>${escape(entry.title)}</strong><small>${escape(entry.type === 'sign' ? entry.text : entry.sample ? 'Highlighted demonstration segment' : 'Mapped street route · field photograph')}</small><span class="card-meta"><span>${entry.sample ? 'Sample entry' : 'Collected Nov 12, 2026'}</span><span aria-hidden="true">↗</span></span>`;
       card.addEventListener('click', () => selectEntry(entry));
       $('#entry-list').append(card);
     });
@@ -88,8 +90,11 @@
   }
   function showDetail(entry, shouldScroll) {
     const detail = $('#entry-detail');
-    const sourceItems = (entry.sources || []).map((source) => `<li>${escape(source)}</li>`).join('');
-    detail.innerHTML = `<div>${signVisual(entry)}<p class="detail-caption">${entry.photo ? 'Image supplied for this entry.' : 'Illustration only. No field photograph has been collected for this sample.'}</p></div><div><button type="button" class="detail-close">Close details</button>${badge(entry)}<h2 id="detail-title" tabindex="-1">${escape(entry.title)}</h2><p>${escape(entry.location)}</p><span class="detail-label">${entry.type === 'sign' ? 'Text & translation' : 'Route status'}</span><p>${entry.type === 'sign' ? `<span lang="es">${escape(entry.text)}</span> — ${escape(entry.translation)}` : 'Approximate sample segment. Exact route and extent to be verified.'}</p><span class="detail-label">${entry.sample ? 'Example observation' : 'Observation'}</span><p>${escape(entry.observation)}</p><span class="detail-label">${entry.sample ? 'Questions for analysis' : 'Analysis'}</span><p>${escape(entry.analysis)}</p><span class="detail-label">Collection date</span><p>${escape(entry.date || 'Not collected yet')}</p><span class="detail-label">Sources</span>${sourceItems ? `<ul>${sourceItems}</ul>` : '<p>No research sources added yet.</p>'}<a class="text-link" href="#research">About our methods →</a></div>`;
+    const sourceItems = (entry.sources || []).map((source) => {
+      if (typeof source === 'string') return `<li>${escape(source)}</li>`;
+      return /^https:\/\//.test(source.url || '') ? `<li><a href="${escape(source.url)}" target="_blank" rel="noopener">${escape(source.title)}</a></li>` : `<li>${escape(source.title)}</li>`;
+    }).join('');
+    detail.innerHTML = `<div>${signVisual(entry)}<p class="detail-caption">${entry.photo ? 'Field photograph · November 12, 2026. Click to open the full image.' : 'Illustration only. No field photograph has been collected for this sample.'}</p></div><div><button type="button" class="detail-close">Close details</button>${badge(entry)}<h2 id="detail-title" tabindex="-1">${escape(entry.title)}</h2><p>${escape(entry.location)}</p><span class="detail-label">${entry.type === 'sign' ? 'Text & translation' : 'Route status'}</span><p>${entry.type === 'sign' ? `<span lang="es">${escape(entry.text)}</span> — ${escape(entry.translation)}` : escape(entry.routeStatus || 'Approximate sample segment. Exact route and extent to be verified.')}</p>${entry.type === 'street' ? `<span class="detail-label">Photographed text & literal translation</span><p><span lang="es">${escape(entry.text)}</span> — ${escape(entry.translation || '')}</p>` : ''}${entry.locationStatus ? `<span class="detail-label">Location accuracy</span><p>${escape(entry.locationStatus)}</p>` : ''}<span class="detail-label">${entry.sample ? 'Example observation' : 'Observation'}</span><p>${escape(entry.observation)}</p><span class="detail-label">${entry.sample ? 'Questions for analysis' : 'Preliminary interpretation'}</span><p>${escape(entry.analysis)}</p>${entry.history ? `<span class="detail-label">Naming history</span><p>${escape(entry.history)}</p>` : ''}<span class="detail-label">Collection date</span><p>${escape(entry.date || 'Not collected yet')}</p><span class="detail-label">Sources</span>${sourceItems ? `<ul>${sourceItems}</ul>` : '<p>No research sources added yet.</p>'}<a class="text-link" href="#research">About our methods →</a></div>`;
     detail.hidden = false;
     detail.querySelector('.detail-close').addEventListener('click', () => { detail.hidden = true; const selected = document.querySelector(`[data-entry="${entry.id}"]`); selected?.focus({ preventScroll: true }); });
     if (shouldScroll) { detail.scrollIntoView({ block: 'start' }); $('#detail-title').focus({ preventScroll: true }); }
@@ -119,7 +124,7 @@
     document.querySelectorAll('[data-layer]').forEach((item) => item.setAttribute('aria-pressed', String(item.dataset.layer === 'both')));
     renderEntries();
   });
-  $('#reset-map').addEventListener('click', () => { if (map) { map.closePopup(); map.setView(homeView.center, homeView.zoom, { animate: false }); } });
+  $('#reset-map').addEventListener('click', () => { if (map) { map.closePopup(); const mapped = [...layers.values()].filter(layer => map.hasLayer(layer)); if (mapped.length) map.fitBounds(L.featureGroup(mapped).getBounds(), {padding:[30,30], animate:false}); else map.setView(homeView.center, homeView.zoom, { animate: false }); } });
   window.addEventListener('hashchange', () => route({ focus: true }));
   route();
 })();

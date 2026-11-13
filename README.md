@@ -1,6 +1,6 @@
 # Spanish in SLO
 
-A static student research website for SPAN 2207. All initial entries are sample data, not collected evidence.
+A static student research website for SPAN 2207. The current collection contains three field photographs collected November 12, 2026. Interpretations are preliminary.
 
 ## Preview
 
@@ -19,6 +19,6 @@ Upload this directory's contents to the root of a GitHub repository. Set Setting
 - `assets/`: photos and favicon.
 - `vendor/`: Leaflet 1.9.4 and license.
 
-When replacing all examples, also revise the global prototype banner, map footnote, research status, photo captions, and findings text. Exact current street geometry and naming history have not been researched. Sample points are fictional.
+When replacing all examples, also revise the global prototype banner, map footnote, research status, photo captions, and findings text. Street routes use SLOStreetCenterlines geometry retrieved November 13, 2026. Independent source segments remain separate to prevent false diagonal connectors. Naming history remains unverified. Luna Rustica is pinned at the approximate photo camera position; its listed address is 2959 Broad Street. See assets/collection-provenance.json for source records.
 
 The basemap uses OpenStreetMap with visible attribution. Respect https://operations.osmfoundation.org/policies/tiles/ and do not bulk-download tiles. Leaflet license is included in `vendor/LEAFLET-LICENSE.txt`.
